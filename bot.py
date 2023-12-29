@@ -1,6 +1,6 @@
 import json
 from config import *
-from tools import functions
+from tools import function_list
 from utils import *
 from prompts import *
 
@@ -19,6 +19,7 @@ class ChatBot():
         self.unfamiliar_prompt = get_unfamiliar_prompt()
 
         self.history = [self.system_prompt, self.start_prompt]
+        print('Bot:', self.start_prompt['content'])
 
     def get_knowledge(self, query, top_k=7):
         query_vector = get_embedding(query)
@@ -45,7 +46,7 @@ class ChatBot():
             messages = [self.vision_prompt, {"role": "user", "content": vision_query}]
 
             response = client.chat.completions.create(
-                model=LLM_MODEL,
+                model='gpt-3.5-turbo-1106',
                 messages=messages,
                 temperature=0.5,
                 max_tokens=800,
@@ -54,7 +55,7 @@ class ChatBot():
             text = ''
             for chunk in response:
                 data = chunk.choices[0].delta
-                if data.get('content') is not None:
+                if hasattr(data, 'content'):
                     text += data.content
                     yield f"data: {json.dumps({'token': data.content})}\n\n".encode("utf-8")
             self.history.append({"role": "user", "content": user_query})
@@ -69,17 +70,20 @@ class ChatBot():
             
             function_response = client.chat.completions.create(
                 model=LLM_MODEL,
-                messages=messages,
+                messages=messages[1:],
                 temperature=0,
-                functions=functions,
+                functions=function_list,
                 function_call='auto'
             )
+
+            print(function_response.choices[0].finish_reason)
 
             if function_response.choices[0].finish_reason == "function_call":
                 params = function_response.choices[0].message.function_call
                 print(params.name)
                 if params.name == 'get_knowledge':
                     knowledge_prompt = get_knowledge_prompt(self.get_knowledge(user_query))
+                    print('get_knowledge')
                     messages.append(knowledge_prompt)
                 elif params.name == 'unfamiliar_question':
                     messages.append(self.unfamiliar_prompt)
@@ -94,8 +98,21 @@ class ChatBot():
             output = ''
             for chunk in response:
                 data = chunk.choices[0].delta
-                if data.get('content') is not None:
-                    output += data.content
-                    yield f"data: {json.dumps({'token': data.content})}\n\n".encode("utf-8")
-            self.history.append({"role": "assistant", "content": output})    
+                if hasattr(data, 'content'):
+                    if data.content is not None:
+                        output += data.content 
+                    # yield f"data: {json.dumps({'token': data.content})}\n\n".encode("utf-8")
+                    yield data.content
+            self.history.append({"role": "assistant", "content": output})
+            print('ok')
+
+
+bot = ChatBot()
+while True:
+    user = input('Pul: ')
+    answer = bot.chat(user)
+    for chunk in answer:
+        print(chunk, end='', flush=True)
+    print()
+    # print('Bot:', answer)
         
