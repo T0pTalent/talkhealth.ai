@@ -1,0 +1,9 @@
+# OPENAI
+OPENAI_API_KEY = 'sk-19O...'
+LLM_MODEL = 'gpt-4-1106-preview'
+EMBEDDING_MODEL = 'text-embedding-ada-002'
+
+#PINECONE
+PINECONE_API_KEY = 'edb3d030-...'
+PINECONE_ENV = 'us-east-1-aws'
+PINECONE_INDEX = 'test2'
