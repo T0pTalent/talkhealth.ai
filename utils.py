@@ -15,7 +15,14 @@ def get_knowledge_text(knowledge_list):
     text = ""
     for data in knowledge_list:
         text += "<document>\n"
-        for key, value in data.item():
+        for key, value in data.items():
             text += f"{key}: {value}\n"
         text += "</document>\n\n"
+    return text
+
+def get_history_text(history):
+    text = ""
+    for h in history:
+        if h['role'] != 'system':
+            text += f"{h['role']}: {h['content']}\n"
     return text

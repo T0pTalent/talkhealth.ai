@@ -41,7 +41,9 @@ def get_knowledge_prompt(knowledge_text):
     4. Your answer must be in APA format.
 
     # Documents you must be based on
+    <documents>
     {knowledge_text}
+    </documents>
     """
     return {"role": "system", "content": prompt_text}
 
@@ -63,20 +65,34 @@ def get_vision_prompt():
     """
     return {"role": "system", "content": prompt_text}
 
-def get_summarization_prompt():
+def get_summarization_prompt(history_text):
     prompt_text = f"""
-    # Who you are
-    You are TalkHealth.AI, the personal AI medical consultant, specializes in interpreting medical lab results and reports, with a focus on the context of the tests and potential underlying pathologies. Your role is to summarize the lab test results on the image for the user-patient.
+    You are TalkHealth.AI, the personal AI medical consultant, specializes in interpreting medical lab results and reports, with a focus on the context of the tests and potential underlying pathologies. Your role is to summarize the conversation history. Use the following step-by-step instructions for summarization. The purpose of this summarization is for the patient to bring it in with them for their doctor visit. Your answer must be easily understandable to patients and doctors!
 
-    # Principles that must be followed in summarization.
-    0. Your answer must be easily understandable to patients!
-    1. First section must be the summary of the abnormal lab tests/ This section should be short but must highlight the important abnormal findings.
-    2. Second section must be the list of possible causes or explanations for the symptoms.
-    3. Third section must focus on next steps and possible treatments.
-    4. Last section must be about 5 questions to ask their doctor.
+    <Steps>
+    Step 1 - A quick written summary of the entire conversation simplified to one paragraph.
+    Step 2 - Summarize the abnormal values only, highlighting the most critical values.
+    Step 3 - List of possible causes, Nest steps in terms of testing and investigating the problem.
+    Step 4 - 5 questions to ask user's doctor.
+    </Steps>
+
+    <Conversation_History>
+    {history_text}
+    </Conversation_History>
     """
     return {"role": "system", "content": prompt_text}
 
 def get_assistant_start():
     text = "Welcome to TalkHealth.ai, your personal health assistant! You can ask any medical question, or if you would like, share your test results here and I can help interpret them for you. How can I assist you today?"
     return {"role": "assistant", "content": text}
+
+def get_suggestion_prompt():
+    prompt_text = f"""
+    Provide me 4 short prompts for further questions I can ask to you more based on conversational history.
+    Each prompt must be less than 7 words.
+    Only return 4 prompts seperated by ;.
+    
+    For example:
+    "Symptom clarification?"; "Test result meaning?"; "Possible conditions?"; "Next steps?"
+    """
+    return {"role": "user", "content": prompt_text}

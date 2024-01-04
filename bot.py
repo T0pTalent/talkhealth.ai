@@ -15,8 +15,8 @@ class ChatBot():
         self.start_prompt = get_assistant_start()
         self.system_prompt = get_system_prompt()
         self.vision_prompt = get_vision_prompt()
-        self.summarize_prompt = get_summarization_prompt()
         self.unfamiliar_prompt = get_unfamiliar_prompt()
+        self.suggestion_prompt = get_suggestion_prompt()
 
         self.history = [self.system_prompt, self.start_prompt]
         print('Bot:', self.start_prompt['content'])
@@ -46,25 +46,25 @@ class ChatBot():
             messages = [self.vision_prompt, {"role": "user", "content": vision_query}]
 
             response = client.chat.completions.create(
-                model='gpt-3.5-turbo-1106',
+                model='gpt-4-vision-preview',
                 messages=messages,
                 temperature=0.5,
                 max_tokens=800,
                 stream=True
             )
-            text = ''
+            output = ''
             for chunk in response:
                 data = chunk.choices[0].delta
-                if hasattr(data, 'content'):
-                    text += data.content
+                if hasattr(data, 'content') and data.content is not None :
+                    output += data.content
                     yield f"data: {json.dumps({'token': data.content})}\n\n".encode("utf-8")
             self.history.append({"role": "user", "content": user_query})
-            self.history.append({"role": "assistant", "content": text})
+            self.history.append({"role": "assistant", "content": output})
 
         else:
             self.history.append({"role": "user", "content": user_query})
             if len(self.history) <= 7:
-                messages = self.history
+                messages = self.history.copy()
             else:
                 messages = [self.system_prompt] + self.history[-6:]
             
@@ -81,7 +81,7 @@ class ChatBot():
             if function_response.choices[0].finish_reason == "function_call":
                 params = function_response.choices[0].message.function_call
                 print(params.name)
-                if params.name == 'get_knowledge':
+                if params.name == 'ask_knowledge':
                     knowledge_prompt = get_knowledge_prompt(self.get_knowledge(user_query))
                     print('get_knowledge')
                     messages.append(knowledge_prompt)
@@ -98,21 +98,46 @@ class ChatBot():
             output = ''
             for chunk in response:
                 data = chunk.choices[0].delta
-                if hasattr(data, 'content'):
-                    if data.content is not None:
-                        output += data.content 
+                if hasattr(data, 'content') and data.content is not None:
+                    output += data.content 
                     # yield f"data: {json.dumps({'token': data.content})}\n\n".encode("utf-8")
                     yield data.content
             self.history.append({"role": "assistant", "content": output})
-            print('ok')
+            
+            messages.append(self.suggestion_prompt)
+            response = client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=100,
+            )
+            yield response.choices[0].message.content
+        
+    def summarize(self):
+        history_text = get_history_text(self.history)
+        messages = [get_summarization_prompt(history_text)]
+        response = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=self.history + [self.summarize_prompt],
+            temperature=0.7,
+            max_tokens=1500,
+        )
+        return response.choices[0].message.content
+
 
 
 bot = ChatBot()
+i = 0
 while True:
-    user = input('Pul: ')
-    answer = bot.chat(user)
-    for chunk in answer:
-        print(chunk, end='', flush=True)
-    print()
-    # print('Bot:', answer)
+    if i<5:
+        i += 1
+        user = input('Pul: ')
+        answer = bot.chat(user)
+        for chunk in answer:
+            print(chunk, end='', flush=True)
+        print()
+    else:
+        answer = bot.summarize()
+        print(answer)
+        # print('Bot:', answer)
         
